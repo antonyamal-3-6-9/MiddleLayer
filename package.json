@@ -1,0 +1,24 @@
+{
+  "name": "middle-layer",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "An API connnects django backend with solana blockchain",
+  "main": "merkle.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Amal Antony",
+  "license": "ISC",
+  "dependencies": {
+    "@metaplex-foundation/mpl-bubblegum": "^4.3.1",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@metaplex-foundation/umi": "^1.0.0",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.0.0",
+    "@solana-developers/helpers": "^2.7.0",
+    "@solana/spl-account-compression": "^0.4.1",
+    "@solana/web3.js": "^1.98.0",
+    "dotenv": "^16.4.7",
+    "esrun": "^3.2.26",
+    "express": "^4.21.2"
+  }
+}
