@@ -1,79 +1,87 @@
-import { createNft, fetchDigitalAsset, mplTokenMetadata, } from "@metaplex-foundation/mpl-token-metadata";
-import { airdropIfRequired, getExplorerLink, } from "@solana-developers/helpers";
-import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
-import { Connection, LAMPORTS_PER_SOL, clusterApiUrl, Keypair } from "@solana/web3.js";
-import { generateSigner, keypairIdentity, percentAmount, } from "@metaplex-foundation/umi";
-import { getWallet } from "../Wallet/wallet.js";
-import dotenv from "dotenv";
-dotenv.config({path: "/home/alastor/MiddleLayer/ .env"});
+import {
+  keypairIdentity,
+  publicKey,
+  generateSigner,
+  none
+} from '@metaplex-foundation/umi'
+import dotenv from 'dotenv'
+import fs from 'fs'
+import { Connection, Keypair } from '@solana/web3.js'
+import { createUmi } from '@metaplex-foundation/umi-bundle-defaults'
+import { mplTokenMetadata } from '@metaplex-foundation/mpl-token-metadata'
+import { dasApi } from '@metaplex-foundation/digital-asset-standard-api'
+import {
+  findLeafAssetIdPda,
+  mintV1,
+  parseLeafFromMintV1Transaction
+} from '@metaplex-foundation/mpl-bubblegum'
+import bubblegum from '@metaplex-foundation/mpl-bubblegum'
 
+dotenv.config({ path: '/home/alastor/MiddleLayer/ .env' })
 
+const RPC_URL = process.env.devnet_url
+const treasuryWalletPath = process.env.treasury_wallet_path
+const merkleTreeAddress = process.env.merkle_tree_address
 
-async function name(params) {
-    
+// Initialize Solana connection
+const connection = new Connection(RPC_URL, 'confirmed')
+
+// Load wallet keypair
+const secretKey = JSON.parse(fs.readFileSync(treasuryWalletPath, 'utf-8'))
+const walletSigner = Keypair.fromSecretKey(new Uint8Array(secretKey))
+
+// Initialize Umi
+const umi = createUmi(connection.rpcEndpoint)
+umi.use(mplTokenMetadata())
+umi.use(dasApi())
+const umiUser = umi.eddsa.createKeypairFromSecretKey(walletSigner.secretKey)
+umi.use(keypairIdentity(umiUser))
+
+async function mintCompressedNFT (recipientWallet, metadata) {
+  console.log('🎨 Minting Compressed NFT...')
+
+  const merkleTreePk = publicKey(merkleTreeAddress)
+  const recipientPk = publicKey(recipientWallet.publicKey)
+
+  const { signature } = await mintV1(umi, {
+    merkleTree: merkleTreePk,
+    treeDelegate: publicKey(walletSigner.publicKey), // Authority of the tree
+    leafOwner: recipientPk, // NFT owner
+    leafDelegate: recipientPk, // Can be set to the owner or another delegate
+    metadata: {
+      name: metadata.name,
+      uri: metadata.uri,
+      symbol: metadata.symbol,
+      collection: none(), // Collection must be none() unless verified
+      creators: [
+        {
+          address: recipientPk, // 👤 User is also the creator
+          share: 100,
+          verified: true // ✅ Must be true for verification
+        }
+      ]
+    }
+  })
+    .sign(walletSigner)
+    .sign(recipientWallet)
+    .sendAndConfirm(umi, { confirm: { commitment: 'confirmed' } })
+
+  console.log(signature)
+
+  const txDetails = await umi.rpc.getTransaction(signature, {
+    commitment: 'confirmed'
+  })
+  console.log('Transaction Details:', txDetails)
+
+  console.log('✅ cNFT Minted!')
+
+  // const leaf = await parseLeafFromMintV1Transaction(umi, signature);
+  // const assetId = findLeafAssetIdPda(umi, { merkleTree, leafIndex: leaf.nonce });
+
+  const assetId = findLeafAssetIdPda(umi, { merkleTree, leafIndex: 10 })
+  console.log('🔍 Asset ID:', assetId)
+
+  const rpcAsset = await umi.rpc.getAssetProof(assetId[0])
+
+  console.log(rpcAsset)
 }
-
-export async function mintNFT (key){
-    const user = getWallet(key);
-
-    console.log("🔑 Using wallet:", user.publicKey.toBase58());
-    // Create Solana connection
-    const connection = new Connection(clusterApiUrl("devnet"));
-    await airdropIfRequired(connection, user.publicKey, 1 * LAMPORTS_PER_SOL, 0.5 * LAMPORTS_PER_SOL);
-    const umi = createUmi(connection.rpcEndpoint);
-    umi.use(mplTokenMetadata());
-    // Convert Web3 keypair to UMI keypair
-    const umiUser = umi.eddsa.createKeypairFromSecretKey(user.secretKey);
-    umi.use(keypairIdentity(umiUser));
-    // Generate a new mint account for the NFT collection
-    const collectionMint = generateSigner(umi);
-    console.log("🎨 Minting new NFT collection with address:", collectionMint.publicKey);
-    // Create NFT transaction
-    const transaction = createNft(umi, {
-        mint: collectionMint,
-        name: "My Collection",
-        symbol: "MC",
-        uri: "https://gateway.pinata.cloud/ipfs/QmPs6YNwEnG6AcXcpAeqHtmYvovGKnxYvEY42T7ZFmQMkf",
-        sellerFeeBasisPoints: percentAmount(0),
-        isCollection: true,
-    });
-    // Send transaction
-    await transaction.sendAndConfirm(umi);
-    console.log("✅ NFT collection created!");
-    // Fetch NFT details
-    const createdCollectionNft = await fetchDigitalAsset(umi, collectionMint.publicKey);
-    console.log(`📦 Collection Address: ${getExplorerLink("address", createdCollectionNft.mint.publicKey, "devnet")}`);
-    //# sourceMappingURL=mint.js.map
-}
-
-
-
-
-console.log("🔑 Using wallet:", user.publicKey.toBase58());
-// Create Solana connection
-const connection = new Connection(clusterApiUrl("devnet"));
-await airdropIfRequired(connection, user.publicKey, 1 * LAMPORTS_PER_SOL, 0.5 * LAMPORTS_PER_SOL);
-const umi = createUmi(connection.rpcEndpoint);
-umi.use(mplTokenMetadata());
-// Convert Web3 keypair to UMI keypair
-const umiUser = umi.eddsa.createKeypairFromSecretKey(user.secretKey);
-umi.use(keypairIdentity(umiUser));
-// Generate a new mint account for the NFT collection
-const collectionMint = generateSigner(umi);
-console.log("🎨 Minting new NFT collection with address:", collectionMint.publicKey);
-// Create NFT transaction
-const transaction = createNft(umi, {
-    mint: collectionMint,
-    name: "My Collection",
-    symbol: "MC",
-    uri: "https://gateway.pinata.cloud/ipfs/QmPs6YNwEnG6AcXcpAeqHtmYvovGKnxYvEY42T7ZFmQMkf",
-    sellerFeeBasisPoints: percentAmount(0),
-    isCollection: true,
-});
-// Send transaction
-await transaction.sendAndConfirm(umi);
-console.log("✅ NFT collection created!");
-// Fetch NFT details
-const createdCollectionNft = await fetchDigitalAsset(umi, collectionMint.publicKey);
-console.log(`📦 Collection Address: ${getExplorerLink("address", createdCollectionNft.mint.publicKey, "devnet")}`);
-//# sourceMappingURL=mint.js.map
