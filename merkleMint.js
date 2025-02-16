@@ -25,7 +25,7 @@ const { getAsset } = bubblegum;
 // Load environment variables
 dotenv.config({ path: "/home/alastor/MiddleLayer/ .env" });
 
-const RPC_URL = "https://devnet.helius-rpc.com/?api-key=a0d5aa96-2efc-4218-8d10-522b72252623";
+const RPC_URL = "https://devnet.helius-rpc.com/";
 const treasuryWalletPath = process.env.treasury_wallet_path;
 
 // Initialize Solana connection
@@ -101,7 +101,7 @@ async function mintCompressedNFT(merkleTree, recipient, metadata) {
 
     const leaf = await  parseLeafFromMintV1Transaction(umi, signature);
     console.log("🔍 Leaf:", leaf);
-    const assetId = findLeafAssetIdPda(umi, { merkleTree, leafIndex: leafIndexData[1] });
+    const assetId = findLeafAssetIdPda(umi, { merkleTree, leafIndex: leaf.nonce });
     console.log("🔍 Asset ID:", assetId);
 
     const rpcAsset = await umi.rpc.getAssetProof(assetId[0])

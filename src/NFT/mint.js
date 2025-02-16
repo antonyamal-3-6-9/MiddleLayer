@@ -1,7 +1,6 @@
 import {
   keypairIdentity,
   publicKey,
-  generateSigner,
   none
 } from '@metaplex-foundation/umi'
 import dotenv from 'dotenv'
@@ -15,7 +14,6 @@ import {
   mintV1,
   parseLeafFromMintV1Transaction
 } from '@metaplex-foundation/mpl-bubblegum'
-import bubblegum from '@metaplex-foundation/mpl-bubblegum'
 
 dotenv.config({ path: '/home/alastor/MiddleLayer/ .env' })
 
@@ -64,24 +62,14 @@ async function mintCompressedNFT (recipientWallet, metadata) {
   })
     .sign(walletSigner)
     .sign(recipientWallet)
-    .sendAndConfirm(umi, { confirm: { commitment: 'confirmed' } })
+    .sendAndConfirm(umi, { confirm: { commitment: 'finalized' } })
 
-  console.log(signature)
+    const leaf = await  parseLeafFromMintV1Transaction(umi, signature);
+    console.log("🔍 Leaf:", leaf);
+    const assetId = findLeafAssetIdPda(umi, { merkleTree: merkleTreePk, leafIndex: leaf.nonce });
+    console.log("🔍 Asset ID:", assetId);
+    const rpcAsset = await umi.rpc.getAssetProof(assetId[0])
+    console.log(rpcAsset)
 
-  const txDetails = await umi.rpc.getTransaction(signature, {
-    commitment: 'confirmed'
-  })
-  console.log('Transaction Details:', txDetails)
-
-  console.log('✅ cNFT Minted!')
-
-  // const leaf = await parseLeafFromMintV1Transaction(umi, signature);
-  // const assetId = findLeafAssetIdPda(umi, { merkleTree, leafIndex: leaf.nonce });
-
-  const assetId = findLeafAssetIdPda(umi, { merkleTree, leafIndex: 10 })
-  console.log('🔍 Asset ID:', assetId)
-
-  const rpcAsset = await umi.rpc.getAssetProof(assetId[0])
-
-  console.log(rpcAsset)
+    return {id: leaf.id, index: leaf.nonce}
 }

@@ -39,7 +39,7 @@ export const createWallet = () => {
 };
 
 export function getWallet(privateKey) {
-    return decryptPrivateKey(privateKey);
+    return Keypair.fromSecretKey(decryptPrivateKey(privateKey));
 }
 
 export async function checkTokenBalance(wallet) {
