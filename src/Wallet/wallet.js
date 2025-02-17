@@ -6,40 +6,52 @@ import crypto from "crypto";
 dotenv.config({path: "/home/alastor/MiddleLayer/ .env"});
 const devnetUrl = process.env.devnet_url;
 const TOKEN_MINT_ADDRESS = process.env.token_mint_address;
-console.log("Running")
-console.log(devnetUrl, TOKEN_MINT_ADDRESS);
 const connection = new Connection(devnetUrl, "confirmed");
 
-export function encryptPrivateKey(secretKey) {
-    const algorithm = "aes-256-cbc";
-    const key = crypto.scryptSync(process.env.ENCRYPTION_SECRET || "default_key", "salt", 32);
-    const iv = crypto.randomBytes(16);
+
+// 🔐 Encrypt private key (result ≤ 100 characters)
+export function encryptPrivateKey(secretKey, encKey) {
+    const algorithm = "aes-256-gcm";
+    const key = crypto.scryptSync(encKey, "salt", 32);
+    const iv = crypto.randomBytes(12); // GCM recommended IV size is 12 bytes
     const cipher = crypto.createCipheriv(algorithm, key, iv);
-    const encrypted = Buffer.concat([cipher.update(secretKey.toString()), cipher.final()]);
-    return iv.toString("hex") + ":" + encrypted.toString("hex");
+
+    const encrypted = Buffer.concat([cipher.update(secretKey.toString(), "utf8"), cipher.final()]);
+    const authTag = cipher.getAuthTag(); // GCM requires an authentication tag
+
+    // Concatenate IV + encrypted data + authTag, encode in Base64
+    return Buffer.concat([iv, encrypted, authTag]).toString("base64").slice(0, 100);
 }
-// 🔓 Decrypt private key when needed
-export function decryptPrivateKey(encryptedData) {
-    const algorithm = "aes-256-cbc";
-    const key = crypto.scryptSync(process.env.ENCRYPTION_SECRET || "default_key", "salt", 32);
-    const [ivHex, encryptedText] = encryptedData.split(":");
-    const iv = Buffer.from(ivHex, "hex");
+
+// 🔓 Decrypt private key
+export function decryptPrivateKey(encryptedData, encKey) {
+    const algorithm = "aes-256-gcm";
+    const key = crypto.scryptSync(encKey, "salt", 32);
+
+    const buffer = Buffer.from(encryptedData, "base64");
+    const iv = buffer.subarray(0, 12); // Extract IV
+    const authTag = buffer.subarray(-16); // Extract Auth Tag (last 16 bytes)
+    const encryptedText = buffer.subarray(12, -16); // Extract encrypted data
+
     const decipher = crypto.createDecipheriv(algorithm, key, iv);
-    const decrypted = Buffer.concat([decipher.update(Buffer.from(encryptedText, "hex")), decipher.final()]);
-    return new Uint8Array(decrypted.toString().split(",").map(Number));
+    decipher.setAuthTag(authTag); // Set authentication tag
+
+    const decrypted = Buffer.concat([decipher.update(encryptedText), decipher.final()]);
+    return decrypted.toString("utf8");
 }
-export const createWallet = () => {
+
+export const createWallet = (encKey) => {
     const keypair = Keypair.generate();
     const walletAddress = keypair.publicKey.toBase58();
-    const encryptedPrivateKey = encryptPrivateKey(keypair.secretKey);
+    const encryptedPrivateKey = encryptPrivateKey(keypair.secretKey, encKey);
     return {
         publicKey: walletAddress,
         privateKey: encryptedPrivateKey
     };
 };
 
-export function getWallet(privateKey) {
-    return Keypair.fromSecretKey(decryptPrivateKey(privateKey));
+export function getWallet(privateKey, encKey) {
+    return Keypair.fromSecretKey(decryptPrivateKey(privateKey, encKey));
 }
 
 export async function checkTokenBalance(wallet) {
