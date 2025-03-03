@@ -17,6 +17,7 @@ import {
 } from "@metaplex-foundation/umi";
 import fs from "fs";
 import dotenv from "dotenv";
+import bs58 from "bs58";
 
 dotenv.config({ path: "/media/alastor/New Volume/EcoSwapChain/ESC-BlockChain/MiddleLayer/ .env" });
 
@@ -68,7 +69,7 @@ export async function mintNFT(recipientPk, metadata) {
     console.log("🎨 Minting new NFT with address:", nftMint.publicKey);
 
     // Create the NFT
-    const { signature } = await withRetryAndTimeout(async () => {
+    const signature  = await withRetryAndTimeout(async () => {
         return createNft(umi, {
             mint: nftMint,
             name: metadata.name,
@@ -96,7 +97,11 @@ export async function mintNFT(recipientPk, metadata) {
     }
     if (!mintedNft) throw new Error("NFT still not found after retries.");
     console.log("📦 NFT Minted:", mintedNft.mint.publicKey.toString());
-    return mintedNft
+    return {
+        nftType: "NFT",
+        mintAddress: nftMint.publicKey.toString(),
+        txHash: bs58.encode(signature.signature), 
+    };
 }
 
 
