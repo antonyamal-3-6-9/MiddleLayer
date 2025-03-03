@@ -2,7 +2,8 @@ import { Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction 
 import { getOrCreateAssociatedTokenAccount, createTransferInstruction } from "@solana/spl-token";
 import * as fs from "fs";
 import dotenv from 'dotenv';
-dotenv.config({path: "/home/alastor/MiddleLayer/ .env"});
+dotenv.config({ path: "/media/alastor/New Volume/EcoSwapChain/ESC-BlockChain/MiddleLayer/ .env" });
+
 const RPC_URL = process.env.devnet_url;
 const TOKEN_MINT_ADDRESS = process.env.token_mint_address;
 const treasuryWalletPath = process.env.treasury_wallet_path;

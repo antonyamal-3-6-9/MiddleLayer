@@ -1,8 +1,12 @@
 import { Connection, Keypair, PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { getOrCreateAssociatedTokenAccount, createTransferInstruction } from "@solana/spl-token";
 import * as fs from "fs";
-const RPC_URL = "https://api.mainnet-beta.solana.com"; // Use a valid Solana RPC
-const TOKEN_MINT_ADDRESS = "YOUR_SWAPCOIN_MINT_ADDRESS"; // Your SwapCoin mint address
+import dotenv from 'dotenv';
+dotenv.config({ path: "/media/alastor/New Volume/EcoSwapChain/ESC-BlockChain/MiddleLayer/ .env" });
+
+const RPC_URL = process.env.devnet_url;
+const TOKEN_MINT_ADDRESS = process.env.token_mint_address;
+const treasuryAddress = process.env.treasuryPublicKey
 /**
  * Transfers SwapCoin from a user wallet to the treasury wallet
  * @param userWalletPath - Path to the user wallet JSON keypair
@@ -10,11 +14,9 @@ const TOKEN_MINT_ADDRESS = "YOUR_SWAPCOIN_MINT_ADDRESS"; // Your SwapCoin mint a
  * @param amount - Amount of SwapCoin to transfer
  * @returns Transaction signature
  */
-export async function transferToTreasury(userWalletPath, treasuryAddress, amount) {
+export async function transferToTreasury(userWallet, amount) {
     const connection = new Connection(RPC_URL, "confirmed");
     // Load user wallet
-    const secretKey = JSON.parse(fs.readFileSync(userWalletPath, "utf-8"));
-    const userWallet = Keypair.fromSecretKey(new Uint8Array(secretKey));
     const mint = new PublicKey(TOKEN_MINT_ADDRESS);
     const treasury = new PublicKey(treasuryAddress);
     // Get associated token accounts
@@ -29,4 +31,3 @@ export async function transferToTreasury(userWalletPath, treasuryAddress, amount
     console.log("Transfer successful! Transaction Signature:", txSignature);
     return txSignature;
 }
-//# sourceMappingURL=tokenTransfer.js.map

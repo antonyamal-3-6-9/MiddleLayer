@@ -3,7 +3,7 @@ import { Keypair, Connection, PublicKey } from "@solana/web3.js";
 import { getAccount, getAssociatedTokenAddress } from "@solana/spl-token";
 import crypto from "crypto";
 
-dotenv.config({path: "/home/alastor/MiddleLayer/ .env"});
+dotenv.config({ path: "/media/alastor/New Volume/EcoSwapChain/ESC-BlockChain/MiddleLayer/ .env" });
 const devnetUrl = process.env.devnet_url;
 const TOKEN_MINT_ADDRESS = process.env.token_mint_address;
 const connection = new Connection(devnetUrl, "confirmed");
