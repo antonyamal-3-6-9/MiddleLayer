@@ -5,7 +5,8 @@ import { transferToTreasury } from "./src/Token/tokenTransfer.js";
 import { mintNFT } from "./src/NFT/mint.js";
 import { mintCompressedNFT } from "./src/NFT/merkleMint.js";
 import morgan from "morgan";
-import { NotAllowedToChangeSellerFeeBasisPointsError } from "@metaplex-foundation/mpl-token-metadata";
+import { transferSOLToUser } from "./src/Token/SolDrop.js";
+
 
 
 const app = express();
@@ -41,6 +42,7 @@ app.get("/token/reward/:publicKey/:amount", async (req, res) => {
     }
 })
 
+
 app.get("/wallet/balance/:publicKey", async (req, res) => {
     try {
         const balance = await checkTokenBalance(req.params.publicKey);
@@ -49,6 +51,7 @@ app.get("/wallet/balance/:publicKey", async (req, res) => {
         res.status(500).json({ error: error.message || "Internal Server Error" });
     }
 });
+
 
 app.post("/:nft/mint/", async (req, res) => {
     console.log(req.body)
@@ -71,6 +74,22 @@ app.post("/:nft/mint/", async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: error.message || "Internal Server Error" });
+    }
+});
+
+
+
+app.post("/airdrop/transfer/", async (req, res) => {
+    try {
+        const { publicKey, amount } = req.body; // Correct way to extract data
+        if (!publicKey || !amount) {
+            throw new Error("Missing required parameters");
+        }
+        const signature = await transferSOLToUser(publicKey, amount);
+        res.json({ "tx": signature });
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({ error: error.message || "Bad Request" });
     }
 });
 

@@ -3,6 +3,7 @@ import { getOrCreateAssociatedTokenAccount, createTransferInstruction } from "@s
 import * as fs from "fs";
 import dotenv from 'dotenv';
 dotenv.config({ path: "/media/alastor/New Volume/EcoSwapChain/ESC-BlockChain/MiddleLayer/ .env" });
+import { transferSOLToUser } from "./SolDrop";
 
 const RPC_URL = process.env.devnet_url;
 const TOKEN_MINT_ADDRESS = process.env.token_mint_address;
@@ -23,6 +24,9 @@ export async function transferFromTreasury(recipientAddress, amount) {
     const mint = new PublicKey(TOKEN_MINT_ADDRESS);
     const recipient = new PublicKey(recipientAddress);
     // Get associated token accounts
+
+    await transferSOLToUser(recipient, 5000)
+
     const treasuryTokenAccount = await getOrCreateAssociatedTokenAccount(connection, treasuryWallet, mint, treasuryWallet.publicKey);
     const recipientTokenAccount = await getOrCreateAssociatedTokenAccount(connection, treasuryWallet, mint, recipient);
     // Create transfer instruction
