@@ -58,7 +58,9 @@ export async function mintNFT(recipientPk, metadata) {
     const connection = new Connection(clusterApiUrl("devnet"));
 
     // Initialize Umi with treasury wallet as signer
-    const umi = createUmi(connection.rpcEndpoint);
+    const umi = createUmi(connection.rpcEndpoint, {
+        commitment: "finalized"
+    });
     umi.use(mplTokenMetadata());
 
     const umiTreasury = umi.eddsa.createKeypairFromSecretKey(treasuryWallet.secretKey);

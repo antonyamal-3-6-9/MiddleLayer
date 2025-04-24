@@ -6,6 +6,7 @@ import { mintNFT } from "./src/NFT/mint.js";
 import { mintCompressedNFT } from "./src/NFT/merkleMint.js";
 import morgan from "morgan";
 import { transferSOLToUser } from "./src/Token/SolDrop.js";
+import { transferNFT } from "./src/NFT/transfer.js";
 
 
 
@@ -86,6 +87,22 @@ app.post("/airdrop/transfer/", async (req, res) => {
             throw new Error("Missing required parameters");
         }
         const signature = await transferSOLToUser(publicKey, amount);
+        res.json({ "tx": signature });
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({ error: error.message || "Bad Request" });
+    }
+});
+
+
+app.post("/nft/transfer/", async (req, res) => {
+    try {
+        const { recipientAddress, mintAddress } = req.body; // Correct way to extract data
+        if (!recipientAddress || !mintAddress) {
+            throw new Error("Missing required parameters");
+        }
+        const signature = await transferNFT(recipientAddress, mintAddress);
+        console.log(signature)
         res.json({ "tx": signature });
     } catch (error) {
         console.log(error)
