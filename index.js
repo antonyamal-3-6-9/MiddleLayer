@@ -7,7 +7,9 @@ import { mintCompressedNFT } from "./src/NFT/merkleMint.js";
 import morgan from "morgan";
 import { transferSOLToUser } from "./src/Token/SolDrop.js";
 import { transferNFT } from "./src/NFT/transfer.js";
-
+import dotenv from "dotenv";
+dotenv.config({ path: "/media/alastor/New Volume/EcoSwapChain/ESC-BlockChain/MiddleLayer/ .env" });
+import jwt from "jsonwebtoken";
 
 
 const app = express();
@@ -15,23 +17,31 @@ const PORT = 3000;
 app.use(express.json());
 app.use(morgan("dev"));
 
-// app.get("/wallet/initialize", async (req, res) => {
-//     try {
-//         const encKey = req.headers["authorization"]; // Get the key from headers
-//         console.log(encKey)
+// In Node.js, modify the secret handling:
+const JWT_SECRET = Buffer.from(process.env.JWT_SECRET.trim(), 'utf8');  // Try utf8 instead of hex
 
-//         if (!encKey) {
-//             return res.status(400).json({ error: "Encryption key is required in headers" });
-//         }
 
-//         const wallet = createWallet(encKey);
-//         const signature = await transferFromTreasury(wallet.publicKey, 100);
+app.use((req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    if (!authHeader?.startsWith('Bearer ')) return res.sendStatus(401);
 
-//         res.json({ wallet, signature });
-//     } catch (error) {
-//         res.status(500).json({ error: error.message || "Internal Server Error" });
-//     }
-// });
+    console.log("JWT_SECRET length (Node):", JWT_SECRET.length);
+
+    const token = authHeader.split(' ')[1];
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithm: 'HS256' });
+        req.user = decoded.client
+        next();
+    } catch(error) {
+        console.log(error)
+        res.status(403).json({ error: 'Invalid token', error: error.message });
+    }
+});
+
+app.get('/ping/', (req, res) => {
+    res.json({ message: 'Verified access', user: req.user });
+});
+
 
 app.get("/token/reward/:publicKey/:amount", async (req, res) => {
     try {
@@ -42,74 +52,6 @@ app.get("/token/reward/:publicKey/:amount", async (req, res) => {
         res.status(400).json({ error: error.message || "Bad Request" });
     }
 })
-
-
-app.get("/wallet/balance/:publicKey", async (req, res) => {
-    try {
-        const balance = await checkTokenBalance(req.params.publicKey);
-        res.json({ balance });
-    } catch (error) {
-        res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
-});
-
-
-app.post("/:nft/mint/", async (req, res) => {
-    console.log(req.body)
-    try {
-        const { publicKey, metadata } = req.body; // Correct way to extract data
-        if (!publicKey || !metadata) {
-            throw new Error("Missing required parameters");
-        }
-
-        let response;
-        if (req.params.nft === "NFT") {
-            response = await mintNFT(publicKey, metadata);
-        } else if (req.params.nft === "CNFT") {
-            response = await mintCompressedNFT(publicKey, metadata);
-        } else {
-            throw new Error("Invalid mint mode");
-        }
-
-        res.json({ "txData": response });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
-});
-
-
-
-app.post("/airdrop/transfer/", async (req, res) => {
-    try {
-        const { publicKey, amount } = req.body; // Correct way to extract data
-        if (!publicKey || !amount) {
-            throw new Error("Missing required parameters");
-        }
-        const signature = await transferSOLToUser(publicKey, amount);
-        res.json({ "tx": signature });
-    } catch (error) {
-        console.log(error)
-        res.status(400).json({ error: error.message || "Bad Request" });
-    }
-});
-
-
-app.post("/nft/transfer/", async (req, res) => {
-    try {
-        const { recipientAddress, mintAddress } = req.body; // Correct way to extract data
-        if (!recipientAddress || !mintAddress) {
-            throw new Error("Missing required parameters");
-        }
-        const signature = await transferNFT(recipientAddress, mintAddress);
-        console.log(signature)
-        res.json({ "tx": signature });
-    } catch (error) {
-        console.log(error)
-        res.status(400).json({ error: error.message || "Bad Request" });
-    }
-});
-
 
 app.listen(PORT, () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
